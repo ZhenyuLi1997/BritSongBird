@@ -75,7 +75,7 @@ server <- function(input, output, session){
     
     map <- map_data("world", region=countries) %>%
       rename(country = region)  %>%
-      left_join(df.cleaned %>% select(country, fill), by="country") 
+      left_join(dataset() %>% select(country, fill), by="country") 
     
     map
   })
@@ -192,7 +192,7 @@ server <- function(input, output, session){
   # Render the bar plot that shows: Recording Types vs # of Records
   output$type <- renderPlot(({
     df <- dataset()
-    df$type <- factor(df.cleaned$type, levels=c("Else", "Both", "Call", "Song"))
+    df$type <- factor(df$type, levels=c("Else", "Both", "Call", "Song"))
     df %>%
       ggplot(aes(x=type)) +
       geom_bar(fill="lightblue") +
