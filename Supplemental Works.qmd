@@ -1,0 +1,202 @@
+---
+title: "Supplemental Works"
+format: html
+editor: visual
+---
+
+## Load the packages
+
+```{r}
+library(tidyverse)
+library(shiny)
+library(ggplot2)
+library(maps)
+```
+
+## Clean the data
+
+```{r}
+# Load the data from file 
+df <- read.csv("birdsong_metadata.csv")
+
+
+df.cleaned <- df %>%
+  # We want to focus on the Great Britain and the surrounding area
+  # So exclude the only countries that are far away
+  filter(!str_detect(country, "Zambia"),
+         !str_detect(country, "Italy"),
+         !str_detect(country, "Estonia"),
+         !str_detect(country, "Hungary"),
+         !str_detect(country, "Latvia"),
+         !str_detect(country, "Poland"),
+         !str_detect(country, "Spain")) %>%
+  # Rename the country so it matches the country name used in the maps package
+  mutate(country = if_else(str_detect(country, "United Kingdom"), "UK", country)) %>%
+  mutate(fill = if_else(str_detect(country, "UK"),  "darkslategray1", "grey"))
+
+#write.csv(df.cleaned, "birdsong_cleaned.csv")
+```
+
+## EDA
+
+### Map
+
+Examine the row count for each country
+
+```{r}
+df.cleaned %>%
+  group_by(country) %>%
+  summarise(count = n())
+```
+
+```{r}
+countries <- df.cleaned$country %>%
+  unique()
+map <- map_data("world", region=countries) %>%
+  rename(country = region)  %>%
+  left_join(df.cleaned %>% select(country, fill), by="country")
+map.lab <- map %>%
+  group_by(country) %>%
+  summarise(long=mean(long), lat=mean(lat))
+
+points <- df.cleaned %>%
+  group_by(country, latitude, longitute) %>%
+  summarise(count = n())
+```
+
+Plot all countries that appear in the dataset
+
+```{r}
+ggplot() +
+  geom_polygon(data=map, aes(x=long, y=lat, fill=fill, group=group)) +
+  scale_fill_identity() +
+  scale_x_continuous(limits = c(-40,30)) +
+  scale_y_continuous(limits = c(42,71)) +
+  geom_text(data=map.lab, aes(x=long,y=lat,label=country), color="black")
+```
+
+Plot the location and counts of birdsong records of only UK
+
+```{r}
+
+ggplot() +
+  geom_polygon(data=map%>%filter(str_detect(country,"UK")), aes(x=long, y=lat, fill=fill, group=group)) +
+  scale_fill_identity() +
+  geom_point(data=points%>%filter(str_detect(country,"UK")), aes(x=longitute, y=latitude, size=count/10), color="orange") +
+  scale_x_continuous(limits = c(-9,2.5))  +
+  scale_y_continuous(limits = c(48,60)) +
+  scale_size_continuous("# of records", labels=c("1", "2", "3", "4", "5")) +
+  geom_text(data=map.lab%>%filter(str_detect(country,"UK")), aes(x=long,y=lat,label=country), color="black")
+```
+
+Plot the location and counts of birdsong records of all countries
+
+```{r}
+ggplot() +
+  geom_polygon(data=map, aes(x=long, y=lat, fill=fill, group=group)) +
+  scale_fill_identity() +
+  geom_point(data=points, aes(x=longitute, y=latitude, size=count/10), color="orange") +
+  scale_x_continuous(limits = c(-40,30))  +
+  scale_y_continuous(limits = c(42,71)) +
+  scale_size_continuous("# of records", labels=c("1", "2", "3", "4", "5")) +
+  geom_text(data=map.lab, aes(x=long,y=lat,label=country), color="black") 
+```
+
+```{r}
+"ABC" == "ABC"
+```
+
+```{r}
+ggplot()
+```
+
+### Data Insight
+
+Explore the songbird species
+
+```{r}
+df.cleaned %>%
+  group_by(english_cname) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+Explore the songbird genus
+
+```{r}
+df.cleaned %>%
+  group_by(genus) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+genus.top5 <- df.cleaned %>%
+  group_by(genus) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  slice(1:5) 
+
+plot <- df.cleaned %>%
+  filter(genus %in% genus.top5$genus)%>%
+  ggplot(aes(x=genus)) +
+  geom_bar(fill="lightblue") +
+  labs(x="Top 5 Songbird Genus",
+       y="Count")
+plot
+
+
+df.cleaned %>%
+  filter(genus %in% genus.top5$genus) 
+#ggsave("genus.png", plot)
+```
+
+```{r}
+paste("www/", "abc", sep="")
+```
+
+Explore other data
+
+```{r}
+# List of all unique species in the dataset
+df.cleaned %>%
+  select(genus, species, english_cname) %>%
+  unique
+
+# All record count by country
+df.cleaned %>%
+  group_by(country) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count))
+
+df.cleaned %>%
+  ggplot(aes(x=country)) +
+  geom_bar()
+
+# Record type
+df.cleaned %>% 
+  select(type) %>%
+  unique()
+
+df.cleaned <- df.cleaned %>%
+  mutate(type = case_when(
+    str_detect(type, "call|Call") & str_detect(type, "song|Song") ~ "Both",
+    str_detect(type, "call|Call") ~ "Call",
+    str_detect(type, "song|Song") ~ "Song",
+    TRUE ~ "Else"
+  ))
+```
+
+```{r}
+df.cleaned %>%
+  select(type) %>%
+  unique()
+
+
+df.cleaned$type <- factor(df.cleaned$type, levels=c("Song", "Call","Both", "Else"))
+  
+df.cleaned %>%
+  ggplot(aes(x=type)) +
+  geom_bar()
+
+
+#write.csv(df.cleaned, "birdsong_cleaned.csv")
+```
